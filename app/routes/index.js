@@ -10,15 +10,21 @@ router.get('/', function(req, res, next) {
 
 router.get('/summarizeURL/:url', function(req, res, next){
 	var url = urlencode.decode(req.params.url);
-	aylien.summarize({url: url}, function(err, response){
+	//commented out to preserve the api hits
+	/*aylien.summarize({url: url}, function(err, response){
 		if(err){
 			console.log(err);
 			res.send(err);
 		}
 		else{
-			res.send(response);
+			var summ = '';
+			for(var i = 0; i<response.sentences.length; i++){
+				i > 0 ? summ += " " + response.sentences[i] : summ += response.sentences[i];
+			}
+			res.send(summ);
 		}
-	})
+	})*/
+	res.send('the summary');
 });
 
 router.get('/summarizeText/:title/:text', function(req, res, next){
