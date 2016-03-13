@@ -20,4 +20,16 @@ function summarize(obj, callback) {
 	});
 }
 
+function extract(obj, callback) {
+	aylien.extract(obj, function(err, response){
+		if(err){
+			callback(err);
+		}
+		else{
+			callback(null, response);
+		}
+	});
+}
+
 exports.summarize = summarize;
+exports.extract   = extract;
