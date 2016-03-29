@@ -4,28 +4,28 @@ var hash = require('password-hash');
 var util = require('util');
 var async = require('async');
 
-exports.newUser = newUser; 					// (userName, email, password, admin, cb)
-exports.findUser = findUser;				// ({userName, email}, cb)
-exports.verifyPassword = verifyPassword;	// ({userName, email}, password, cb)
-exports.changePassword = changePassword;	// ({userName, email}, oldPW, newPW, cb)
-exports.modifyUser = modifyUser;			// ({userName, email}, {..props}, cb)
+exports.newUser = newUser; 					// (username, email, password, admin, cb)
+exports.findUser = findUser;				// ({username, email}, cb)
+exports.verifyPassword = verifyPassword;	// ({username, email}, password, cb)
+exports.changePassword = changePassword;	// ({username, email}, oldPW, newPW, cb)
+exports.modifyUser = modifyUser;			// ({username, email}, {..props}, cb)
 
 
-function newUser(userName, email, password, admin, cb){
+function newUser(username, email, password, admin, cb){
 	async.waterfall([
 		function(callback){
-			neo4j.query('match (n:User) where n.userName="'+userName+'" or n.email="'+email+'" return n', function(err, response){
+			neo4j.query('match (n:User) where n.username="'+username+'" or n.email="'+email+'" return n', function(err, response){
 				if(err){
 					callback(err);
 				}
 				else{
-					response.data.length === 0 ? callback(null) : callback('Username or email address is already registered')
+					response.data.length === 0 ? callback(null) : callback('username or email address is already registered')
 				}
 			});
 		},
 		function(callback){
 			var user = {
-				userName: userName,
+				username: username,
 				email: email,
 				password: hash.generate(password),
 				admin: admin
@@ -61,26 +61,27 @@ function newUser(userName, email, password, admin, cb){
 */
 function findUser(user, cb){
 	var query = 'Match (n:User) where '
-		query += user.userName ? 'n.userName="'+user.userName+'" ' : 'n.email="'+user.email+'" ';
+		query += user.username ? 'n.username="'+user.username+'" ' : 'n.email="'+user.email+'" ';
 		query += 'return n';
-	
+
 	neo4j.query(query, function(err, response){
 		if(err){
 			cb(err);
 		}
 		else{
-			cb(null, response.data);
+			cb(null, response.data[0]);
 		}
 	})
 }
-/*findUser({user:'shawn', email:'shawn@gmail.com'}, function(err, response){
+/*
+findUser({username:'shawn', email:'shawn@gmail.com'}, function(err, response){
 	console.log(response);
 });
 */
 
 function verifyPassword(user, password, cb){
 	var param = '';
-	param = user.userName ? 'n.userName="'+user.userName+'" ' : 'n.email="'+user.email+'" ';
+	param = user.username ? 'n.username="'+user.username+'" ' : 'n.email="'+user.email+'" ';
 	neo4j.query('Match (n:User) where '+param+' return n', function(err, response){
 		if(response.data.length===0){
 			cb('Invalid username or email address');
@@ -98,14 +99,14 @@ function verifyPassword(user, password, cb){
 		}
 	});
 }
-/*verifyPassword({userName:'shawn'},'pw', function(err, res){
+/*verifyPassword({username:'shawn'},'pw', function(err, res){
 	err ? console.log(err) : null;
 	res ? console.log('pw verified') : null;
 });
 */
 function changePassword(user, oldPW, newPW, cb){
 	var param = '';
-	param = user.userName ? 'n.userName="'+user.userName+'" ' : 'n.email="'+user.email+'" ';
+	param = user.username ? 'n.username="'+user.username+'" ' : 'n.email="'+user.email+'" ';
 	
 	async.waterfall([
 		function(callback){
@@ -146,13 +147,13 @@ function changePassword(user, oldPW, newPW, cb){
 		response ? cb(response) : null;
 	});
 }
-/*changePassword({userName:'shawn'}, 'pw', 'password', function(err, response){
+/*changePassword({username:'shawn'}, 'pw', 'password', function(err, response){
 	err ? console.log(err) : console.log(response);
 })
 */
 function modifyUser(user, newProps, cb){
 	var param = '';
-	param = user.userName ? 'n.userName="'+user.userName+'" ' : 'n.email="'+user.email+'" ';
+	param = user.username ? 'n.username="'+user.username+'" ' : 'n.email="'+user.email+'" ';
 	
 	var setProps = '';
 	for (var key in newProps) {
@@ -165,7 +166,7 @@ function modifyUser(user, newProps, cb){
 		response ? cb(null, 'User profile updated successfully') : null;
 	})
 }
-/*modifyUser({userName:'shawn'},{date:'12-10-15', hair:'brown'}, function(err, response){
+/*modifyUser({username:'shawn'},{date:'12-10-15', hair:'brown'}, function(err, response){
 	err ? console.log(err) : null;
 	response ? console.log(response) : null;
 });

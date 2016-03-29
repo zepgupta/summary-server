@@ -6,10 +6,12 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var cors = require('cors');
 
+var app = module.exports = express();
+
 var routes = require('./routes/index');
+var apiRoutes = require('./routes/api');
 var config = require('./lib/config');
 
-var app = express();
 //make all routes cors compatible
 app.use(cors());
 
@@ -29,6 +31,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
+app.use('/api', apiRoutes);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -60,6 +63,3 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
-
-
-module.exports = app;
