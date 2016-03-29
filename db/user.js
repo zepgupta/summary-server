@@ -11,10 +11,10 @@ exports.changePassword = changePassword;	// ({username, email}, oldPW, newPW, cb
 exports.modifyUser = modifyUser;			// ({username, email}, {..props}, cb)
 
 
-function newUser(username, email, password, admin, cb){
+function newUser(userInfo, cb){
 	async.waterfall([
 		function(callback){
-			neo4j.query('match (n:User) where n.username="'+username+'" or n.email="'+email+'" return n', function(err, response){
+			neo4j.query('match (n:User) where n.username="'+userInfo.username+'" or n.email="'+userInfo.email+'" return n', function(err, response){
 				if(err){
 					callback(err);
 				}
@@ -24,34 +24,32 @@ function newUser(username, email, password, admin, cb){
 			});
 		},
 		function(callback){
-			var user = {
-				username: username,
-				email: email,
-				password: hash.generate(password),
-				admin: admin
-			}
-			var query = 'Create (n:User '+util.inspect(user)+')';
+			var user = Object.assign({}, userInfo, {
+				password: hash.generate(userInfo.password),
+				admin: false
+			});
+			var query = 'Create (n:User '+util.inspect(user)+') return n';
 			
 			neo4j.query(query, function(err, response){
 				if(err){
 					callback(err);
 				}
 				else{
-					callback(null, response.data);
+					callback(null, response.data[0]);
 				}
 			});
 		}
 	],
-	function(err, res){
+	function(err, response){
 		if(typeof err === 'string'){
 			cb(err);
 		}
 		else if(err){
-			console.log(err);
+			console.log('Error: '+ err);
 			cb('db error');
 		}
 		else{
-			cb('User created successfully');
+			cb(null, response);
 		}
 	});
 }

@@ -11,7 +11,6 @@ var summary = require('../db/summaries');
 //authentication route
 apiRoutes.post('/authenticate', function(req, res){
 	user.findUser({username: req.body.username}, function(err, user){
-		console.log(req.body.username);
 		err ? res.json({success:false, message:'API error'}) : null;
 		if(!user){
 			res.json({success:false, message: 'Authentication failed. User not found.'});
@@ -31,7 +30,28 @@ apiRoutes.post('/authenticate', function(req, res){
 			}
 		}
 	});
-})
+});
+
+//registration route
+apiRoutes.post('/register', function(req, res) {
+	user.newUser(req.body, function(err, user){
+		if (err) {
+			console.log(err);
+			res.json({success:false, message:err});
+		}
+		else if (user){
+			var token = jwt.sign(user, app.get('secret'), {
+				expiresIn: 7200
+			});
+			res.json({
+				success: true,
+				message: 'User registered.',
+				token: token
+			});
+		}
+	});
+});
+
 //authentication middleware
 apiRoutes.use(function(req, res, next) {
 
@@ -80,7 +100,7 @@ apiRoutes.get('/summaries', function(req, res, next){
 	var token = jwt.decode(token);
 	var user = {username: token.username};
 	summary.getSummaries(user, function(err, response){
-		err ? res.json({success: false, message: 'API error'}) : res.json(response);
+		err ? res.json({success: false, message: 'API error'}) : res.json({ summaries: response });
 	});
 });
 

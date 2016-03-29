@@ -19,8 +19,7 @@ String.prototype.replaceAll = function(search, replacement) {
 function getSummaries(user, cb){
 	var query = 'Match (n:User '+util.inspect(user)+')-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id}';
 	neo4j.query(query, function(err, response){
-		err ? cb(err) : null;
-		response ? cb(null, response.data) : null
+		err ? cb(err) : cb(null, response.data);
 	});
 }
 /*getSummaries({userName:'shawn'}, function(err, response){
