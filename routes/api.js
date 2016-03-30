@@ -83,15 +83,15 @@ apiRoutes.use(function(req, res, next) {
 
 apiRoutes.get('/summarizeURL/:url', function(req, res, next){
 	summary.addSummary({username: req.decoded.username},{url:req.params.url, flag: 'URL'}, function(err, response){
-		err ? res.json({success: true, message: 'API error'}) : res.json(response);
+		err ? res.json({success: false, message: 'API error'}) : res.json(response);
 	})
 });
 
 apiRoutes.get('/summarizeText/:title/:text', function(req, res, next){
 	var text = urlencode.decode(req.params.text);
 	var title = urlencode.decode(req.params.title);
-	summary.addSummary({username: req.decoded.username}, {text: text, title: title, flag: "TEXT"}, function(err, response){
-		err ? res.json({success: true, message: 'API error'}) : res.json(response);
+	summary.addSummary({username: req.decoded.username}, {article: text, title: title, flag: "TEXT"}, function(err, response){
+		err ? res.json({success: false, message: 'API error'}) : res.json(response);
 	});
 });
 
@@ -101,6 +101,36 @@ apiRoutes.get('/summaries', function(req, res, next){
 	var user = {username: token.username};
 	summary.getSummaries(user, function(err, response){
 		err ? res.json({success: false, message: 'API error'}) : res.json({ summaries: response });
+	});
+});
+
+apiRoutes.delete('/:id', function(req, res, next){
+	var token = req.body.token || req.query.token || req.headers['x-access-token'];
+	var token = jwt.decode(token);
+	var user = {username: token.username};
+	var id = req.params.id;
+	summary.deleteSummary(user, id, function(err, response){
+		if (err) {
+			res.json({success: false, message: 'API error'});
+		}
+		else {
+			res.json({success: true})
+		}
+	});
+});
+
+apiRoutes.get('/fullText/:id', function(req, res, next){
+	var token = req.body.token || req.query.token || req.headers['x-access-token'];
+	var token = jwt.decode(token);
+	var user = {username: token.username};
+	var id = req.params.id;
+	summary.getFullText(id, function(err, response){
+		if (err) {
+			res.json({success: false, message: 'API error'});
+		}
+		else {
+			res.json({success: true, title: response.title, article: response.article});
+		}
 	});
 });
 

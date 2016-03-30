@@ -10,6 +10,7 @@ var urlencode = require('urlencode');
 exports.getSummaries = getSummaries;		// ({userName, email})
 exports.addSummary = addSummary;
 exports.deleteSummary = deleteSummary;
+exports.getFullText = getFullText;
 
 String.prototype.replaceAll = function(search, replacement) {
     var target = this;
@@ -39,12 +40,15 @@ function addSummary(user, summary, cb){
 				});
 			},
 			function(sum, callback){
-				var query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+Object.assign(util.inspect(summary), {id:id})+') merge (n)-[:hasSummary]->(s) return s'
+				var query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+util.inspect(Object.assign({}, summary, sum, {id:id}))+') merge (n)-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id}';
 				neo4j.query(query, function(err, response){
-					err ? cb(err) : cb(null, sum);
+					err ? cb(err) : cb(null, response.data[0]);
 				});
 			}
-		]);
+		],
+		function(err, response){
+			err ? cb(err) : cb(null, response)
+		});
 	}
 	else{
 		async.waterfall([
@@ -82,7 +86,7 @@ function addSummary(user, summary, cb){
 				}
 				else{
 					var id = shortid.generate();
-					query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+Object.assign(util.inspect(sum), {id:id})+') Merge (n)-[:hasSummary]->(s) return s'
+					query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+util.inspect(Object.assign({},sum,{id:id}))+') Merge (n)-[:hasSummary]->(s) return s'
 					neo4j.query(query, function(err, response){
 						err ? cb(err) : callback(null, response.data[0]);
 					});
@@ -100,32 +104,77 @@ addSummary({userName:'shawn'}, {title:'hey', summary:'ho', id:'URLletsgo', url:'
 })
 */
 
-function deleteSummary(user, summaryId, cb){
-	var text = summaryId.substring(0,4) === 'TEXT' ? true : false ;
+function deleteSummary(user, id, cb){
 	var query = '';
-	if(text){
-		query = 'match (n:User '+util.inspect(user)+')-[r]->(s:Summary {id:"'+summaryId+'"}) delete r,s';
-	}
-	else{
-		query = 'match (n:User '+util.inspect(user)+')-[r]->(s:Summary {id:"'+summaryId+'"}) delete r';
-	}
-	neo4j.query(query, function(err, response){
-		err ? cb(err) : null;
-		response ? cb(null, "Summary deleted from User's list") : null;
+	async.waterfall([
+		function(callback){
+			query = 'Match n where n.id="'+id+'" return n';
+			neo4j.query(query, function(err, response){
+				if (err) {
+					callback(err);
+				}
+				else {
+					callback(null, response.data[0]);
+				}
+			});
+		},
+		function(summary, callback) {
+			if (summary.flag === "URL") {
+				query =  'Match (n)-[r]-(m:User '+util.inspect(user)+') where n.id="'+id+'" delete r';
+				neo4j.query(query, function(err, response){
+					if(err){
+						callback(err);
+					}
+					else{
+						callback(null, response);
+					}
+				});
+			}
+			else {
+				query =  'Match (n)-[r]-(m:User '+util.inspect(user)+') where n.id="'+id+'" delete r, n';
+				neo4j.query(query, function(err, response){
+					if(err){
+						callback(err);
+					}
+					else{
+						callback(null, response);
+					}
+				});
+			}
+		}
+	],
+	function(err, response){
+		err ? cb(err) : cb(null, response);
 	});
 }
-/*
-deleteSummary({userName:'shawn'}, 'TEXTletsgo', function(err, response){
+
+/*deleteSummary({userName:'shawn'}, '41LiFeECe', function(err, response){
 	err ? console.log(err) : console.log(response);
 })
 */
 
+function getFullText(id, cb) {
+	var query = 'match n where n.id="'+id+'" return {article: n.article, title: n.title}';
+	neo4j.query(query, function(err, response){
+		if (err){
+			cb(err);
+		}
+		else{
+			cb(null, response.data[0]);
+		}
+	});
+}
+/*
+getFullText('EkWTTk4Cg', function(err, response){
+	err ? console.log(err) : console.log(response);
+});
+*/
 
 //
 //**helper functions**
 //
 function summarizeText(sum, cb){
-	var text = urlencode.decode(sum.text);
+	var text = urlencode.decode(sum.article);
 	aylien.summarize({title:sum.title ,text: text}, function(err, response){
 		if(err){
 			console.log('error');
@@ -171,11 +220,10 @@ function summarizeUrl(sum, cb){
 					callback(err);
 				}
 				else{
-					callback(null, Object.assign({}, sum, {title: response.title, url: url}));
+					callback(null, Object.assign({}, sum, {title: response.title, article: response.article, url: url}));
 				}
 			});
 		}	
-		//res.send('url summary');
 	],
 	function(err, response){
 		if(err){
@@ -187,7 +235,11 @@ function summarizeUrl(sum, cb){
 	});
 }
 
-//var sum = {url:'https%3A%2F%2Fscotch.io%2Ftutorials%2Fauthenticate-a-node-js-api-with-json-web-tokens', id: 'URL1xyeasdf'}
+//var sum = {url:'https%3A%2F%2Fscotch.io%2Ftutorials%2Fauthenticate-a-node-js-api-with-json-web-tokens', flag: 'URL'}
+/*summarizeUrl(sum, function(err, response){
+	
+})*/
+
 
 //var sum = {id:'asdf23qefa', title: 'test', text: "One reason is security - if (haha! when) a hacker gains access to your front-end webserver, he gets access to everything it has access to. If you've placed your middle tier in the web server, then he has access to everything it has - ie your DB, and next thing you know, he's just run 'select * from users' on your DB and taken it away from offline password cracking. Another reason is scaling - the web tier where the pages are constructed and mangled and XML processed and all that takes a lot more resource than the middle tier which is often an efficient method of getting data from the DB to the web tier. Not to mention transferring all that static data that resides (or is cached) on the web server. Adding more web servers is a simple task once you've got past 1. There shouldn't be a 1:1 ratio between web and logic tiers - I've seen 8:1 before now (and a 4:1 ratio between logic tier and DB). It depends what your tiers do however and how much caching goes on in them. Websites don't really care about single-user performance as they're built to scale, it doesn't matter that there is an extra call slowing things down a little if it means you can serve more users. Another reason it can be good to have these layers is that it forces more discipline in development where an API is developed (and easily tested as it is standalone) and then the UI developed to consume it. I worked at a place that did this - different teams developed different layers and it worked well as they had specialists for each tier who could crank out changes really quickly because they didn't have to worry about the other tiers - ie a UI javscript dev could add a new section to the site by simply consuming a new webservice someone else had developed."}
 /*
