@@ -19,6 +19,7 @@
     "node-neo4j": "^2.0.3",
     "password-hash": "^1.2.2",
     "serve-favicon": "~2.3.0",
+    "shortid": "^2.2.4",
     "urlencode": "^1.1.0"
   }
 }
