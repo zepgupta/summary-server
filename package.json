@@ -15,6 +15,7 @@
     "express": "~4.13.1",
     "jade": "~1.11.0",
     "jsonwebtoken": "^5.7.0",
+    "moment": "^2.12.0",
     "morgan": "~1.6.1",
     "node-neo4j": "^2.0.3",
     "password-hash": "^1.2.2",

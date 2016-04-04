@@ -1,6 +1,7 @@
 var neo4j = require('./neo4j-connection');
 var aylien = require('../lib/aylien');
 var shortid = require('shortid');
+var moment = require('moment');
 
 var hash = require('password-hash');
 var util = require('util');
@@ -18,7 +19,7 @@ String.prototype.replaceAll = function(search, replacement) {
 };
 
 function getSummaries(user, cb){
-	var query = 'Match (n:User '+util.inspect(user)+')-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id}';
+	var query = 'Match (n:User '+util.inspect(user)+')-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id, summaryDate: s.summaryDate}';
 	neo4j.query(query, function(err, response){
 		err ? cb(err) : cb(null, response.data);
 	});
@@ -31,7 +32,12 @@ function getSummaries(user, cb){
 function addSummary(user, summary, cb){
 	var url = summary.flag === 'URL' ? true : false;
 	
+	summary.summaryDate = moment().format('MMMM Do YYYY');
+
 	if(!url){
+		summary.author = "not applicable";
+		summary.publishDate = "not applicable";
+
 		var id = shortid.generate();
 		async.waterfall([
 			function(callback){
@@ -40,7 +46,7 @@ function addSummary(user, summary, cb){
 				});
 			},
 			function(sum, callback){
-				var query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+util.inspect(Object.assign({}, summary, sum, {id:id}))+') merge (n)-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id}';
+				var query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+util.inspect(Object.assign({}, summary, sum, {id:id}))+') merge (n)-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id, summaryDate: s.summaryDate}';
 				neo4j.query(query, function(err, response){
 					err ? cb(err) : cb(null, response.data[0]);
 				});
@@ -65,7 +71,7 @@ function addSummary(user, summary, cb){
 				//if a summary from that url exists, then just give the user access to it
 				if(exists){
 					console.log('exists')
-					query = 'Match (n:User '+util.inspect(user)+') match (s:Summary { url:"'+urlencode.decode(summary.url)+'"}) Merge (n)-[:hasSummary]->(s) return s'
+					query = 'Match (n:User '+util.inspect(user)+') match (s:Summary { url:"'+urlencode.decode(summary.url)+'"}) Merge (n)-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id, summaryDate: s.summaryDate}';
 					neo4j.query(query, function(err, response){
 						err ? callback(err) : callback(null, {exists: true, summary: response.data[0]});
 					});
@@ -86,7 +92,7 @@ function addSummary(user, summary, cb){
 				}
 				else{
 					var id = shortid.generate();
-					query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+util.inspect(Object.assign({},sum,{id:id}))+') Merge (n)-[:hasSummary]->(s) return s'
+					query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+util.inspect(Object.assign({},sum,{id:id}))+') Merge (n)-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id, summaryDate: s.summaryDate}';
 					neo4j.query(query, function(err, response){
 						err ? cb(err) : callback(null, response.data[0]);
 					});
@@ -220,7 +226,7 @@ function summarizeUrl(sum, cb){
 					callback(err);
 				}
 				else{
-					callback(null, Object.assign({}, sum, {title: response.title, article: response.article, url: url}));
+					callback(null, Object.assign({}, sum, {title: response.title, article: response.article, url: url, author: response.author, publishDate: response.publishDate}));
 				}
 			});
 		}	
@@ -234,12 +240,12 @@ function summarizeUrl(sum, cb){
 		}
 	});
 }
-
-//var sum = {url:'https%3A%2F%2Fscotch.io%2Ftutorials%2Fauthenticate-a-node-js-api-with-json-web-tokens', flag: 'URL'}
-/*summarizeUrl(sum, function(err, response){
+/*
+var sum = {url:'http%3A%2F%2Fwww.cnn.com%2F2016%2F04%2F03%2Fpolitics%2Fnorth-dakota-gop-delegates-donald-trump-ted-cruz-john-kasich%2Findex.html', flag: 'URL'}
+summarizeUrl(sum, function(err, response){
 	
-})*/
-
+})
+*/
 
 //var sum = {id:'asdf23qefa', title: 'test', text: "One reason is security - if (haha! when) a hacker gains access to your front-end webserver, he gets access to everything it has access to. If you've placed your middle tier in the web server, then he has access to everything it has - ie your DB, and next thing you know, he's just run 'select * from users' on your DB and taken it away from offline password cracking. Another reason is scaling - the web tier where the pages are constructed and mangled and XML processed and all that takes a lot more resource than the middle tier which is often an efficient method of getting data from the DB to the web tier. Not to mention transferring all that static data that resides (or is cached) on the web server. Adding more web servers is a simple task once you've got past 1. There shouldn't be a 1:1 ratio between web and logic tiers - I've seen 8:1 before now (and a 4:1 ratio between logic tier and DB). It depends what your tiers do however and how much caching goes on in them. Websites don't really care about single-user performance as they're built to scale, it doesn't matter that there is an extra call slowing things down a little if it means you can serve more users. Another reason it can be good to have these layers is that it forces more discipline in development where an API is developed (and easily tested as it is standalone) and then the UI developed to consume it. I worked at a place that did this - different teams developed different layers and it worked well as they had specialists for each tier who could crank out changes really quickly because they didn't have to worry about the other tiers - ie a UI javscript dev could add a new section to the site by simply consuming a new webservice someone else had developed."}
 /*
