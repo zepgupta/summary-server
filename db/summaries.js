@@ -37,6 +37,7 @@ function addSummary(user, summary, cb){
 	if(!url){
 		summary.author = "not applicable";
 		summary.publishDate = "not applicable";
+		summary.url = "not applicable";
 
 		var id = shortid.generate();
 		async.waterfall([
@@ -46,7 +47,7 @@ function addSummary(user, summary, cb){
 				});
 			},
 			function(sum, callback){
-				var query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+util.inspect(Object.assign({}, summary, sum, {id:id}))+') merge (n)-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id, summaryDate: s.summaryDate}';
+				var query = 'Match (n:User '+util.inspect(user)+') Merge (s:Summary '+util.inspect(Object.assign({}, sum, summary, {id:id}))+') merge (n)-[:hasSummary]->(s) return {title: s.title, summary: s.summary, id: s.id, summaryDate: s.summaryDate}';
 				neo4j.query(query, function(err, response){
 					err ? cb(err) : cb(null, response.data[0]);
 				});
@@ -160,7 +161,7 @@ function deleteSummary(user, id, cb){
 */
 
 function getFullText(id, cb) {
-	var query = 'match n where n.id="'+id+'" return {article: n.article, title: n.title}';
+	var query = 'match n where n.id="'+id+'" return {article: n.article, title: n.title, publishDate: n.publishDate, summaryDate: n.summaryDate, url: n.url, author: n.author}';
 	neo4j.query(query, function(err, response){
 		if (err){
 			cb(err);

@@ -129,7 +129,7 @@ apiRoutes.get('/fullText/:id', function(req, res, next){
 			res.json({success: false, message: 'API error'});
 		}
 		else {
-			res.json({success: true, title: response.title, article: response.article});
+			res.json(Object.assign({success: true}, response));
 		}
 	});
 });
